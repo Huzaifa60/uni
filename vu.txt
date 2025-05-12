@@ -1,0 +1,94 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <string.h>
+#include <ctype.h>
+
+#define INPUT_FILE "input.txt"
+#define OUTPUT_FILE "output.txt"
+
+int sum = 0;
+char name[100];
+char modified[100];
+
+// Thread T1: Read integers from input.txt, calculate sum, write to output.txt
+void* thread1_func(void* arg) {
+    FILE* fp = fopen(INPUT_FILE, "r");
+    if (!fp) {
+        perror("Failed to open input.txt");
+        pthread_exit(NULL);
+    }
+
+    int num;
+    while (fscanf(fp, "%d", &num) == 1) {
+        sum += num;
+    }
+    fclose(fp);
+
+    FILE* out = fopen(OUTPUT_FILE, "w");
+    if (!out) {
+        perror("Failed to open output.txt");
+        pthread_exit(NULL);
+    }
+
+    fprintf(out, "T1: Sum of numbers: %d\n", sum);
+    fclose(out);
+
+    printf("T1: Sum of numbers: %d\n", sum);
+    pthread_exit(NULL);
+}
+
+// Thread T2: Get user input, replace vowels, print and append to output.txt
+void* thread2_func(void* arg) {
+    printf("T2: Enter a string: ");
+    fgets(name, sizeof(name), stdin);
+    name[strcspn(name, "\n")] = '\0'; // Remove newline
+
+    strcpy(modified, name);
+
+    for (int i = 0; modified[i] != '\0'; i++) {
+        char ch = tolower(modified[i]);
+        if (ch == 'a' || ch == 'e' || ch == 'i' || ch == 'o' || ch == 'u') {
+            modified[i] = '*';
+        }
+    }
+
+    printf("T2: Modified string: %s\n", modified);
+
+    FILE* out = fopen(OUTPUT_FILE, "a");
+    if (!out) {
+        perror("Failed to open output.txt");
+        pthread_exit(NULL);
+    }
+
+    fprintf(out, "T2: Modified string: %s\n", modified);
+    fclose(out);
+
+    pthread_exit(NULL);
+}
+
+int main() {
+    // Check if input.txt exists, else create it
+    FILE* check = fopen(INPUT_FILE, "r");
+    if (!check) {
+        FILE* create = fopen(INPUT_FILE, "w");
+        if (!create) {
+            perror("Failed to create input.txt");
+            return 1;
+        }
+        fprintf(create, "10\n20\n30\n40\n50\n");
+        fclose(create);
+    } else {
+        fclose(check);
+    }
+
+    pthread_t t1, t2;
+
+    pthread_create(&t1, NULL, thread1_func, NULL);
+    pthread_join(t1, NULL);
+
+    pthread_create(&t2, NULL, thread2_func, NULL);
+    pthread_join(t2, NULL);
+
+    return 0;
+}
